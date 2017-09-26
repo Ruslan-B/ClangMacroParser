@@ -22,25 +22,27 @@ namespace RCore.ClangMacroParser
             bool IsNumberEnd(char x) => NumberEnd.Contains(x);
             bool IsIdStart(char x) => x == '_' || IsAz(x);
             bool IsId(char x) => IsIdStart(x) || Digits.Contains(x);
-
+            
             var characters = expression.ToCharArray();
             var i = 0;
 
             bool CanPeek() => i < characters.Length;
             char Peek() => characters[i];
-            char Read() => characters[i++];
+            char Read2() => characters[i++];
+
+            Func<char> Read = () => characters[i++];
 
             IEnumerable<char> YieldWhile(params Func<char, bool>[] tests)
             {
                 foreach (var test in tests)
                     while (CanPeek() && test(Peek())) yield return Read();
             }
-
+            
             Token TokenValue(TokenType type, object value, int start) => new Token(type, value, start, i - start);
 
             Token TokenString(TokenType type, IEnumerable<char> x)
             {
-                var s = x.ToString();
+                var s = new string(x.ToArray());
                 return new Token(type, s, i - s.Length, i);
             }
 
@@ -54,10 +56,10 @@ namespace RCore.ClangMacroParser
             Token Number()
             {
                 var start = i;
-                var number = YieldWhile(IsNumberStart, IsNumber);
-                var numberType = YieldWhile(IsNumberEnd);
+                var number = YieldWhile(IsNumberStart, IsNumber).ToArray();
+                var numberType = YieldWhile(IsNumberEnd).ToArray();
                 var value = GetNumberValue(number, numberType);
-                return TokenValue(TokenType.Number | TokenType.Constant, number, start);
+                return TokenValue(TokenType.Number | TokenType.Constant, value, start);
             }
 
             Token Id() => TokenString(TokenType.Identifier, YieldWhile(IsIdStart, IsId));
