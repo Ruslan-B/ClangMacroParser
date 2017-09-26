@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26730.16
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RCore.ClangMacroParser", "RCore.ClangMacroParser\RCore.ClangMacroParser.csproj", "{DA5D8A62-5491-4C7A-8950-069173588EA8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RCore.ClangMacroParser.Test", "RCore.ClangMacroParser.Test\RCore.ClangMacroParser.Test.csproj", "{2DB144EE-62FD-4D06-8315-9037952A4DA9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DA5D8A62-5491-4C7A-8950-069173588EA8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA5D8A62-5491-4C7A-8950-069173588EA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA5D8A62-5491-4C7A-8950-069173588EA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA5D8A62-5491-4C7A-8950-069173588EA8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2DB144EE-62FD-4D06-8315-9037952A4DA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2DB144EE-62FD-4D06-8315-9037952A4DA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2DB144EE-62FD-4D06-8315-9037952A4DA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2DB144EE-62FD-4D06-8315-9037952A4DA9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {173B1E0E-5187-4A71-8272-DF8E9487FAD9}
+	EndGlobalSection
+EndGlobal
