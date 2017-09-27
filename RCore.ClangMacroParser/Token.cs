@@ -5,7 +5,7 @@ namespace RCore.ClangMacroParser
     [DebuggerDisplay("{" + nameof(Value) + "}, {" + nameof(TokenType) + "}")]
     public struct Token
     {
-        public Token(TokenType tokenType, object value, int startPosition, int length)
+        public Token(TokenType tokenType, string value, int startPosition, int length)
         {
             TokenType = tokenType;
             Value = value;
@@ -14,7 +14,7 @@ namespace RCore.ClangMacroParser
         }
 
         public TokenType TokenType { get; }
-        public object Value { get; }
+        public string Value { get; }
         public int StartPosition { get; }
         public int Length { get; }
     }

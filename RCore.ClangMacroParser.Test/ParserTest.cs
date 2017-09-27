@@ -11,7 +11,7 @@ namespace RCore.ClangMacroParser.Test
         [TestMethod]
         public void A()
         {
-            var a = Parser.Parse("-1.0f");
+            var a = Parser.Parse("(-1 + 2us) / (4 - 3.f)");
         }
     }
 }
