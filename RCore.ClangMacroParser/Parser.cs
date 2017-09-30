@@ -2,30 +2,38 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using RCore.ClangMacroParser.Expressions;
+using RCore.ClangMacroParser.Tokenization;
 
 namespace RCore.ClangMacroParser
 {
-    public static class TokenExtensions
-    {
-        public static bool IsIdentifier(this Token token) =>
-            token.TokenType == TokenType.Identifier;
-
-        public static bool IsOperator(this Token token) =>
-            token.TokenType == TokenType.Operator;
-
-        public static bool IsConstant(this Token token) =>
-            token.TokenType == TokenType.Number || token.TokenType == TokenType.Char || token.TokenType == TokenType.String;
-
-        public static bool IsString(this Token token) =>
-            token.TokenType == TokenType.String;
-
-        public static bool IsPunctuator(this Token token, string value) =>
-            token.TokenType == TokenType.Punctuator && token.Value == value;
-    }
-
     public static class Parser
     {
-        public static object Parse(string expression)
+        // http://en.cppreference.com/w/c/language/operator_precedence
+        private static readonly Dictionary<OperationType, int> OperationPrecedence = new Dictionary<OperationType, int>
+        {
+            {OperationType.Add, 4},
+            {OperationType.Divide, 3},
+            {OperationType.Modulo, 3},
+            {OperationType.Multiply, 3},
+            {OperationType.Power, 9},
+            {OperationType.Subtract, 4},
+            {OperationType.And, 11},
+            {OperationType.Or, 10},
+            {OperationType.ExclusiveOr, 9},
+            {OperationType.LeftShift, 5},
+            {OperationType.RightShift, 5},
+            {OperationType.AndAlso, 11},
+            {OperationType.OrElse, 12},
+            {OperationType.Equal, 7},
+            {OperationType.NotEqual, 7},
+            {OperationType.GreaterThanOrEqual, 6},
+            {OperationType.GreaterThan, 6},
+            {OperationType.LessThan, 6},
+            {OperationType.LessThanOrEqual, 6}
+        };
+
+        public static IExpression Parse(string expression)
         {
             var tokens = Tokenizer.Tokenize(expression).ToArray();
 
@@ -33,145 +41,100 @@ namespace RCore.ClangMacroParser
             bool CanRead() => i < tokens.Length;
             Token Read() => tokens[i++];
             Token Current() => tokens[i];
-            Token Next() => tokens[i + 1];
 
-            Expression Constant()
+            bool IsSequenceOf(params Func<Token, bool>[] tests) =>
+                i + tests.Length < tokens.Length
+                && tests.Select((test, index) => new {test, token = tokens[i + index]}).All(x => x.test(x.token));
+
+            IExpression Constant()
             {
                 var t = Read();
                 var value = t.Value; // todo finalize constant parser
                 return new ConstantExpression(value);
             }
 
-            Expression Variable() => new VariableExpression(Read().Value);
+            IExpression Variable() => new VariableExpression(Read().Value);
 
-            Expression Atom()
-            {
-                var t = Current();
-                if (t.IsPunctuator("("))
-                {
-                    Read();
-                    var exp = Expression();
-                    while (CanRead() && !Current().IsPunctuator(")"))
-                        return MaybeBinary(() => exp);
-                    Debug.Assert(Read().IsPunctuator(")"));
-                    return MaybeBinary(() => exp);
-                }
-                if (Current().IsOperator()) return new UnaryExpression(Read().Value, Expression());
-                if (t.IsConstant() || t.IsString()) return Constant();
-                if (t.IsIdentifier()) return Variable();
-                throw new NotImplementedException();
-            }
-
-            Expression MaybeUnary(Func<Expression> other)
-            {
-                if (Current().IsOperator()) return new UnaryExpression(Read().Value, Atom());
-                return other();
-            }
-
-            Expression MaybeBinary(Func<Expression> other, int x = 0)
-            {
-                if (CanRead() && Current().IsOperator())
-                {
-                    var t = Read();
-                    var left = other();
-                    var right = Expression();
-
-                    return new BinaryExpression(left, t.Value, right);
-                }
-                return other();
-            }
-
-            IEnumerable<Expression> Args()
+            TResult InParentheses<TResult>(Func<TResult> func)
             {
                 Debug.Assert(Read().IsPunctuator("("));
-                while (CanRead() && !Current().IsPunctuator(")"))
-                {
-                    yield return Expression();
-                    if (Current().IsPunctuator(",")) Read();
-                }
+                var result = func();
                 Debug.Assert(Read().IsPunctuator(")"));
+                return result;
             }
 
-            Expression Call()
+            IEnumerable<IExpression> Args()
+            {
+                return InParentheses(() =>
+                {
+                    var args = new List<IExpression>();
+                    while (CanRead() && !Current().IsPunctuator(")"))
+                    {
+                        args.Add(Expression());
+                        if (Current().IsPunctuator(",")) Read();
+                    }
+                    return args;
+                });
+            }
+
+            IExpression Call()
             {
                 var t = Read();
                 return new CallExpression(t.Value, Args());
             }
 
-            Expression MaybeCall(Func<Expression> other)
+            IExpression Unary()
             {
-                if (CanRead() && Current().IsIdentifier() && Next().IsPunctuator("(")) return Call();
-                return other();
+                var t = Read();
+                var operationType = OperationTypeConverter.FromString(t.Value);
+                return new UnaryExpression(operationType, Expression());
+            }
+            
+            IExpression Atomic()
+            {
+                if (Current().IsPunctuator("(")) return InParentheses(Expression);
+                if (Current().IsConstant() || Current().IsString()) return Constant();
+                if (Current().IsIdentifier()) return Variable();
+                throw new NotSupportedException();
             }
 
-            Expression Expression()
+            bool IsCast() => IsSequenceOf(x => x.IsPunctuator("("), x => x.IsKeyword() || x.IsIdentifier(), x => x.IsPunctuator(")"));
+
+            IExpression Cast() => new CastExpression(InParentheses(() => Read().Value), Atomic());
+
+            IExpression NoneAtomic()
             {
-                var e = MaybeCall(() => MaybeUnary(() => MaybeBinary(() => Atom())));
                 if (CanRead())
-                    return MaybeBinary(() => e);
-                return e;
+                {
+                    if (IsSequenceOf(x => x.IsIdentifier(), x => x.IsPunctuator("("))) return Call();
+                    if (Current().IsOperator()) return Unary();
+                    if (IsCast()) return Cast();
+                    return Atomic();
+                }
+                throw new NotSupportedException();
             }
+
+            IExpression MaybeBinary(IExpression left, int precedence = int.MaxValue)
+            {
+                if (CanRead() && Current().IsOperator())
+                {
+                    var operationType = OperationTypeConverter.FromString(Current().Value);
+                    var thisPrecedence = OperationPrecedence[operationType];
+                    if (thisPrecedence < precedence)
+                    {
+                        Read();
+                        var right = MaybeBinary(Atomic(), thisPrecedence);
+                        var binary = new BinaryExpression(left, operationType, right);
+
+                        return MaybeBinary(binary, precedence);
+                    }
+                }
+                return left;
+            }
+
+            IExpression Expression() => MaybeBinary(NoneAtomic());
 
             return Expression();
         }
-    }
-    
-    public class CallExpression : Expression
-    {
-        public CallExpression(string name, IEnumerable<Expression> args)
-        {
-            Name = name;
-            Args = args.ToArray();
-        }
-
-        [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-        public IReadOnlyCollection<Expression> Args { get; }
-
-        public string Name { get; }
-    }
-    
-    public class ConstantExpression : Expression
-    {
-        public ConstantExpression(object value) => Value = value;
-
-        public object Value { get; }
-    }
-    
-    public class VariableExpression : Expression
-    {
-        public VariableExpression(string name) => Name = name;
-
-        public string Name { get; }
-    }
-    
-    public class UnaryExpression : Expression
-    {
-        public UnaryExpression(string methodType, Expression operand)
-        {
-            MethodType = methodType;
-            Operand = operand;
-        }
-
-        public string MethodType { get; }
-
-        public Expression Operand { get; }
-    }
-    
-    public class BinaryExpression : Expression
-    {
-        public BinaryExpression(Expression left, string methodType, Expression right)
-        {
-            Left = left;
-            MethodType = methodType;
-            Right = right;
-        }
-
-        public Expression Left { get; }
-        public string MethodType { get; }
-        public Expression Right { get; }
-    }
-
-    public abstract class Expression
-    {
     }
 }

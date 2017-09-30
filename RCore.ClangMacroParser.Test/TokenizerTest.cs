@@ -3,6 +3,7 @@
 using System;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using RCore.ClangMacroParser.Tokenization;
 
 namespace RCore.ClangMacroParser.Test
 {

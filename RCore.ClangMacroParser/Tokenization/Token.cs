@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace RCore.ClangMacroParser
+namespace RCore.ClangMacroParser.Tokenization
 {
     [DebuggerDisplay("{" + nameof(Value) + "}, {" + nameof(TokenType) + "}")]
     public struct Token

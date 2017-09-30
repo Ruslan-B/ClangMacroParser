@@ -4,10 +4,52 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace RCore.ClangMacroParser
+namespace RCore.ClangMacroParser.Tokenization
 {
     public static class Tokenizer
     {
+        private static readonly HashSet<char> Digits = new HashSet<char>("0123456789");
+        private static readonly HashSet<char> Separators = new HashSet<char>(" \\\r\n\t");
+        private static readonly HashSet<char> NumberEnd = new HashSet<char>("ulfd");
+        private static readonly HashSet<char> Operators = new HashSet<char>("+-*/<>=|~!^&");
+        private static readonly HashSet<char> Punctuators = new HashSet<char>(",()[]{}");
+
+        private static readonly HashSet<string> Keywords = new HashSet<string>
+        {
+            "auto",
+            "break",
+            "case",
+            "char",
+            "const",
+            "continue",
+            "default",
+            "do",
+            "double",
+            "else",
+            "enum",
+            "extern",
+            "float",
+            "for",
+            "goto",
+            "if",
+            "int",
+            "long",
+            "register",
+            "return",
+            "short",
+            "signed",
+            "sizeof",
+            "static",
+            "struct",
+            "switch",
+            "typedef",
+            "union",
+            "unsigned",
+            "void",
+            "volatile",
+            "while"
+        };
+
         public static IEnumerable<Token> Tokenize(string expression)
         {
             bool IsAz(char x) => char.ToLower(x) >= 'a' && char.ToLower(x) <= 'z';
@@ -60,12 +102,12 @@ namespace RCore.ClangMacroParser
                 Skip(IsDoubleQuote);
                 return t;
             }
-            
+
             Token Char()
             {
                 //todo is not complete as escape quote needs to be handled
                 Skip(IsQuote);
-                var  t = Token(TokenType.Char, YieldWhile(x => !IsQuote(x)));
+                var t = Token(TokenType.Char, YieldWhile(x => !IsQuote(x)));
                 Skip(IsQuote);
                 return t;
             }
@@ -104,47 +146,5 @@ namespace RCore.ClangMacroParser
                 else throw new NotSupportedException();
             }
         }
-
-        private static readonly HashSet<char> Digits = new HashSet<char>("0123456789");
-        private static readonly HashSet<char> Separators = new HashSet<char>(" \\\r\n\t");
-        private static readonly HashSet<char> NumberEnd = new HashSet<char>("ufdbsil");
-        private static readonly HashSet<char> Operators = new HashSet<char>("+-*/<>=|~!^&");
-        private static readonly HashSet<char> Punctuators = new HashSet<char>(",()[]{}");
-
-        private static readonly HashSet<string> Keywords = new HashSet<string>
-        {
-            "auto",
-            "break",
-            "case",
-            "char",
-            "const",
-            "continue",
-            "default",
-            "do",
-            "double",
-            "else",
-            "enum",
-            "extern",
-            "float",
-            "for",
-            "goto",
-            "if",
-            "int",
-            "long",
-            "register",
-            "return",
-            "short",
-            "signed",
-            "sizeof",
-            "static",
-            "struct",
-            "switch",
-            "typedef",
-            "union",
-            "unsigned",
-            "void",
-            "volatile",
-            "while"
-        };
     }
 }

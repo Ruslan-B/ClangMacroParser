@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace RCore.ClangMacroParser
+﻿namespace RCore.ClangMacroParser.Tokenization
 {
     public enum TokenType
     {
