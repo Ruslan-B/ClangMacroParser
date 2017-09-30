@@ -6,7 +6,8 @@ namespace RCore.ClangMacroParser
     {
         Keyword,
         Identifier,
-        Constant,
+        Number,
+        Char,
         String,
         Punctuator,
         Operator

@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -9,36 +8,37 @@ namespace RCore.ClangMacroParser
     public static class TokenExtensions
     {
         public static bool IsIdentifier(this Token token) =>
-            token.TokenType == TokenType.Punctuator;
+            token.TokenType == TokenType.Identifier;
 
         public static bool IsOperator(this Token token) =>
             token.TokenType == TokenType.Operator;
 
         public static bool IsConstant(this Token token) =>
-            token.TokenType == TokenType.Constant;
+            token.TokenType == TokenType.Number || token.TokenType == TokenType.Char || token.TokenType == TokenType.String;
 
         public static bool IsString(this Token token) =>
             token.TokenType == TokenType.String;
-        
+
         public static bool IsPunctuator(this Token token, string value) =>
             token.TokenType == TokenType.Punctuator && token.Value == value;
     }
+
     public static class Parser
     {
         public static object Parse(string expression)
         {
             var tokens = Tokenizer.Tokenize(expression).ToArray();
 
-            int i = 0;
+            var i = 0;
             bool CanRead() => i < tokens.Length;
             Token Read() => tokens[i++];
             Token Current() => tokens[i];
-            Token Next() => tokens[i];
+            Token Next() => tokens[i + 1];
 
             Expression Constant()
             {
                 var t = Read();
-                var value = t.Value;// todo finalize constant parser
+                var value = t.Value; // todo finalize constant parser
                 return new ConstantExpression(value);
             }
 
@@ -46,27 +46,37 @@ namespace RCore.ClangMacroParser
 
             Expression Atom()
             {
-                return MaybeCall(() => {
-                    var t = Current();
-                    if (t.IsPunctuator("("))
-                    {
-                        Read();
-                        var exp = Expression();
-                        Debug.Assert(Read().IsPunctuator(")"));
-                        return exp;
-                    }
-                    if (t.IsConstant() || t.IsString()) return Constant();
-                    if (t.IsIdentifier()) return Variable();
-                    throw new NotImplementedException();
-                });
+                var t = Current();
+                if (t.IsPunctuator("("))
+                {
+                    Read();
+                    var exp = Expression();
+                    while (CanRead() && !Current().IsPunctuator(")"))
+                        return MaybeBinary(() => exp);
+                    Debug.Assert(Read().IsPunctuator(")"));
+                    return MaybeBinary(() => exp);
+                }
+                if (Current().IsOperator()) return new UnaryExpression(Read().Value, Expression());
+                if (t.IsConstant() || t.IsString()) return Constant();
+                if (t.IsIdentifier()) return Variable();
+                throw new NotImplementedException();
             }
 
-            Expression MaybeBinary(Func<Expression> other, int x)
+            Expression MaybeUnary(Func<Expression> other)
             {
-                if (Current().IsOperator())
+                if (Current().IsOperator()) return new UnaryExpression(Read().Value, Atom());
+                return other();
+            }
+
+            Expression MaybeBinary(Func<Expression> other, int x = 0)
+            {
+                if (CanRead() && Current().IsOperator())
                 {
-                    throw new NotImplementedException();
-                    
+                    var t = Read();
+                    var left = other();
+                    var right = Expression();
+
+                    return new BinaryExpression(left, t.Value, right);
                 }
                 return other();
             }
@@ -74,16 +84,19 @@ namespace RCore.ClangMacroParser
             IEnumerable<Expression> Args()
             {
                 Debug.Assert(Read().IsPunctuator("("));
-                while (CanRead() && Current().IsPunctuator(")"))
+                while (CanRead() && !Current().IsPunctuator(")"))
                 {
                     yield return Expression();
                     if (Current().IsPunctuator(",")) Read();
-
                 }
                 Debug.Assert(Read().IsPunctuator(")"));
             }
 
-            Expression Call() => new CallExpression(Current().Value, Args());
+            Expression Call()
+            {
+                var t = Read();
+                return new CallExpression(t.Value, Args());
+            }
 
             Expression MaybeCall(Func<Expression> other)
             {
@@ -93,42 +106,69 @@ namespace RCore.ClangMacroParser
 
             Expression Expression()
             {
-                return MaybeCall(() => MaybeBinary(() => Atom(), 0));
+                var e = MaybeCall(() => MaybeUnary(() => MaybeBinary(() => Atom())));
+                if (CanRead())
+                    return MaybeBinary(() => e);
+                return e;
             }
-            
+
             return Expression();
         }
     }
-
+    
     public class CallExpression : Expression
     {
-        public string Name { get; }
-
-        public CallExpression(string name, object args)
+        public CallExpression(string name, IEnumerable<Expression> args)
         {
             Name = name;
+            Args = args.ToArray();
         }
-    }
 
-    public 
-        class ConstantExpression : Expression
+        [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
+        public IReadOnlyCollection<Expression> Args { get; }
+
+        public string Name { get; }
+    }
+    
+    public class ConstantExpression : Expression
     {
+        public ConstantExpression(object value) => Value = value;
+
         public object Value { get; }
-
-        public ConstantExpression(object value)
-        {
-            Value = value;
-        }
     }
-
-    public  class VariableExpression : Expression
+    
+    public class VariableExpression : Expression
     {
-        public string Name { get; }
+        public VariableExpression(string name) => Name = name;
 
-        public VariableExpression(string name)
+        public string Name { get; }
+    }
+    
+    public class UnaryExpression : Expression
+    {
+        public UnaryExpression(string methodType, Expression operand)
         {
-            Name = name;
+            MethodType = methodType;
+            Operand = operand;
         }
+
+        public string MethodType { get; }
+
+        public Expression Operand { get; }
+    }
+    
+    public class BinaryExpression : Expression
+    {
+        public BinaryExpression(Expression left, string methodType, Expression right)
+        {
+            Left = left;
+            MethodType = methodType;
+            Right = right;
+        }
+
+        public Expression Left { get; }
+        public string MethodType { get; }
+        public Expression Right { get; }
     }
 
     public abstract class Expression

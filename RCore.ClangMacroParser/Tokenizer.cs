@@ -34,17 +34,17 @@ namespace RCore.ClangMacroParser
             Token Token(TokenType type, IEnumerable<char> x)
             {
                 var s = new string(x.ToArray());
-                return new Token(type, s, i - s.Length, i);
+                return new Token(type, s, i - s.Length, s.Length);
             }
 
             Token OneCharToken(TokenType type, char x) => Token(type, new[] {x});
 
-            void SkipSeparators()
+            void Skip(Func<char, bool> test)
             {
-                while (CanRead() && Separators.Contains(Current())) Read();
+                while (CanRead() && test(Current())) Read();
             }
 
-            Token Number() => Token(TokenType.Constant, YieldWhile(IsNumberStart, IsNumberEnd));
+            Token Number() => Token(TokenType.Number, YieldWhile(IsNumberStart, IsNumberEnd));
 
             Token IdentifierOrKeyword()
             {
@@ -52,9 +52,23 @@ namespace RCore.ClangMacroParser
                 return Token(Keywords.Contains(value) ? TokenType.Keyword : TokenType.Identifier, value);
             }
 
-            Token String() => Token(TokenType.String, YieldWhile(x => !IsDoubleQuote(x))); //todo is not complete 
-
-            Token Char() => Token(TokenType.Constant, YieldWhile(x => !IsQuote(x))); //todo is not complete 
+            Token String()
+            {
+                //todo is not complete as escape double quote and double double quote needs to be handled
+                Skip(IsDoubleQuote);
+                var t = Token(TokenType.String, YieldWhile(x => !IsDoubleQuote(x)));
+                Skip(IsDoubleQuote);
+                return t;
+            }
+            
+            Token Char()
+            {
+                //todo is not complete as escape quote needs to be handled
+                Skip(IsQuote);
+                var  t = Token(TokenType.Char, YieldWhile(x => !IsQuote(x)));
+                Skip(IsQuote);
+                return t;
+            }
 
             Token Operator() => Token(TokenType.Operator, YieldWhile(Operators.Contains));
 
@@ -80,7 +94,7 @@ namespace RCore.ClangMacroParser
             {
                 var c = Current();
 
-                if (Separators.Contains(c)) SkipSeparators();
+                if (Separators.Contains(c)) Skip(Separators.Contains);
                 else if (IsNumberStart(c)) yield return Number();
                 else if (IsIdentifierStart(c)) yield return IdentifierOrKeyword();
                 else if (IsDoubleQuote(c)) yield return String();
