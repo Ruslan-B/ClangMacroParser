@@ -29,6 +29,7 @@ namespace RCore.ClangMacroParser.Test
         [TestMethod]
         public void Number()
         {
+            CastExpression<ConstantExpression>(Parser.Parse("0"), x => Assert.AreEqual(0, x.Value)); // unit
             CastExpression<ConstantExpression>(Parser.Parse("0.23"), x => Assert.AreEqual(0.23d, x.Value));
             CastExpression<ConstantExpression>(Parser.Parse("1.23d"), x => Assert.AreEqual(1.23d, x.Value));
             CastExpression<ConstantExpression>(Parser.Parse("1.23f"), x => Assert.AreEqual(1.23f, x.Value));

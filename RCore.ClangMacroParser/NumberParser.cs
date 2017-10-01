@@ -23,7 +23,7 @@ namespace RCore.ClangMacroParser
             var numberStyles = isHex ? NumberStyles.HexNumber : NumberStyles.Integer;
             if (typeHint == typeof(int))
             {
-                if (int.TryParse(value, numberStyles, CultureInfo.InvariantCulture, out var r) && r > 0) return r;
+                if (int.TryParse(value, numberStyles, CultureInfo.InvariantCulture, out var r) && r >= 0) return r;
                 typeHint = typeof(uint);
             }
             if (typeHint == typeof(uint))
