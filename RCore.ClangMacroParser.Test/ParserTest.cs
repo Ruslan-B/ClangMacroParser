@@ -15,33 +15,39 @@ namespace RCore.ClangMacroParser.Test
         }
 
         [TestMethod]
-        public void ExpressionPrecedence()
+        public void String()
         {
-            var e = Parser.Parse("1 + 2 * 3");
-            CastExpression<BinaryExpression>(e, x =>
-            {
-                Assert.AreEqual(OperationType.Add, x.OperationType);
-                CastExpression<ConstantExpression>(x.Left, y => Assert.AreEqual("1", y.Value));
-                CastExpression<BinaryExpression>(x.Right, y =>
-                {
-                    Assert.AreEqual(OperationType.Multiply, y.OperationType);
-                    CastExpression<ConstantExpression>(y.Left, z => Assert.AreEqual("2", z.Value));
-                    CastExpression<ConstantExpression>(y.Right, z => Assert.AreEqual("3", z.Value));
-                });
-            });
+            CastExpression<ConstantExpression>(Parser.Parse("\"abc\""), x => Assert.AreEqual("abc", x.Value));
         }
 
         [TestMethod]
-        public void C()
+        public void Char()
         {
-            var b = Parser.Parse(@" AV_VERSION_INT(LIBAVCODEC_VERSION_MAJOR, \
-                                               LIBAVCODEC_VERSION_MINOR, \
-                                               LIBAVCODEC_VERSION_MICRO)");
-            var c = Parser.Parse(@"(LIBAVCODEC_VERSION_MAJOR < 58)");
+            CastExpression<ConstantExpression>(Parser.Parse("\'a\'"), x => Assert.AreEqual('a', x.Value));
+        }
 
-            var d = Parser.Parse(@"MKBETAG('N','O','N','E')");
+        [TestMethod]
+        public void Number()
+        {
+            CastExpression<ConstantExpression>(Parser.Parse("0.23"), x => Assert.AreEqual(0.23d, x.Value));
+            CastExpression<ConstantExpression>(Parser.Parse("1.23d"), x => Assert.AreEqual(1.23d, x.Value));
+            CastExpression<ConstantExpression>(Parser.Parse("1.23f"), x => Assert.AreEqual(1.23f, x.Value));
+            CastExpression<ConstantExpression>(Parser.Parse("0.23"), x => Assert.AreEqual(0.23d, x.Value));
+            CastExpression<ConstantExpression>(Parser.Parse("1.23d"), x => Assert.AreEqual(1.23d, x.Value));
+            CastExpression<ConstantExpression>(Parser.Parse("1.23f"), x => Assert.AreEqual(1.23f, x.Value));
+            CastExpression<ConstantExpression>(Parser.Parse("0x80000000"), x => Assert.AreEqual(0x80000000, x.Value)); // unit
+            CastExpression<ConstantExpression>(Parser.Parse("0x8000000000000000ULL"), x => Assert.AreEqual(0x8000000000000000UL, x.Value)); // unit
+        }
 
-            var e = Parser.Parse(@"MKBETAG(a, b, c, d)((d) | ((c) << 8) | ((b) << 16) | ((unsigned)(a) << 24))");
+        [TestMethod]
+        public void Unary()
+        {
+            var e = Parser.Parse(@"(-(1))");
+            CastExpression<UnaryExpression>(e, x =>
+            {
+                Assert.AreEqual(OperationType.Subtract, x.OperationType);
+                Assert.IsInstanceOfType(x.Operand, typeof(ConstantExpression));
+            });
         }
 
         [TestMethod]
@@ -53,7 +59,30 @@ namespace RCore.ClangMacroParser.Test
                 Assert.AreEqual("unsigned", x.TargetType);
                 Assert.IsInstanceOfType(x.Operand, typeof(BinaryExpression));
             });
-            ;
+        }
+
+        [TestMethod]
+        public void Precedence()
+        {
+            var e = Parser.Parse("1 + 2 * 3");
+            CastExpression<BinaryExpression>(e, x =>
+            {
+                Assert.AreEqual(OperationType.Add, x.OperationType);
+                CastExpression<ConstantExpression>(x.Left, y => Assert.AreEqual(1, y.Value));
+                CastExpression<BinaryExpression>(x.Right, y =>
+                {
+                    Assert.AreEqual(OperationType.Multiply, y.OperationType);
+                    CastExpression<ConstantExpression>(y.Left, z => Assert.AreEqual(2, z.Value));
+                    CastExpression<ConstantExpression>(y.Right, z => Assert.AreEqual(3, z.Value));
+                });
+            });
+        }
+
+        [TestMethod]
+        public void Lamda()
+        {
+            var e = Parser.Parse(@"MKBETAG(a, b, c, d)((d) | ((c) << 8) | ((b) << 16) | ((unsigned)(a) << 24))");
+            // todo parsing is incomplete
         }
     }
 }

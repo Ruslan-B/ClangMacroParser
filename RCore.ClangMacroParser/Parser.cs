@@ -9,30 +9,6 @@ namespace RCore.ClangMacroParser
 {
     public static class Parser
     {
-        // http://en.cppreference.com/w/c/language/operator_precedence
-        private static readonly Dictionary<OperationType, int> OperationPrecedence = new Dictionary<OperationType, int>
-        {
-            {OperationType.Add, 4},
-            {OperationType.Divide, 3},
-            {OperationType.Modulo, 3},
-            {OperationType.Multiply, 3},
-            {OperationType.Power, 9},
-            {OperationType.Subtract, 4},
-            {OperationType.And, 11},
-            {OperationType.Or, 10},
-            {OperationType.ExclusiveOr, 9},
-            {OperationType.LeftShift, 5},
-            {OperationType.RightShift, 5},
-            {OperationType.AndAlso, 11},
-            {OperationType.OrElse, 12},
-            {OperationType.Equal, 7},
-            {OperationType.NotEqual, 7},
-            {OperationType.GreaterThanOrEqual, 6},
-            {OperationType.GreaterThan, 6},
-            {OperationType.LessThan, 6},
-            {OperationType.LessThanOrEqual, 6}
-        };
-
         public static IExpression Parse(string expression)
         {
             var tokens = Tokenizer.Tokenize(expression).ToArray();
@@ -49,8 +25,19 @@ namespace RCore.ClangMacroParser
             IExpression Constant()
             {
                 var t = Read();
-                var value = t.Value; // todo finalize constant parser
-                return new ConstantExpression(value);
+                var value = t.Value;
+                switch (t.TokenType)
+                {
+                    case TokenType.Number:
+                        return new ConstantExpression(NumberParser.Parse(value));
+                    case TokenType.Char:
+                        Debug.Assert(value.Length == 1);
+                        return new ConstantExpression(value.ToCharArray()[0]);
+                    case TokenType.String:
+                        return new ConstantExpression(value);
+                    default:
+                        throw new NotSupportedException();
+                }
             }
 
             IExpression Variable() => new VariableExpression(Read().Value);
@@ -86,10 +73,10 @@ namespace RCore.ClangMacroParser
             IExpression Unary()
             {
                 var t = Read();
-                var operationType = OperationTypeConverter.FromString(t.Value);
+                var operationType = OperationTypeHelper.ConvertFromString(t.Value);
                 return new UnaryExpression(operationType, Expression());
             }
-            
+
             IExpression Atomic()
             {
                 if (Current().IsPunctuator("(")) return InParentheses(Expression);
@@ -100,7 +87,7 @@ namespace RCore.ClangMacroParser
 
             bool IsCast() => IsSequenceOf(x => x.IsPunctuator("("), x => x.IsKeyword() || x.IsIdentifier(), x => x.IsPunctuator(")"));
 
-            IExpression Cast() => new CastExpression(InParentheses(() => Read().Value), Atomic());
+            IExpression Cast() => new CastExpression(InParentheses(() => Read().Value), NoneAtomic());
 
             IExpression NoneAtomic()
             {
@@ -116,20 +103,24 @@ namespace RCore.ClangMacroParser
 
             IExpression MaybeBinary(IExpression left, int precedence = int.MaxValue)
             {
-                if (CanRead() && Current().IsOperator())
+                while (true)
                 {
-                    var operationType = OperationTypeConverter.FromString(Current().Value);
-                    var thisPrecedence = OperationPrecedence[operationType];
-                    if (thisPrecedence < precedence)
+                    if (CanRead() && Current().IsOperator())
                     {
-                        Read();
-                        var right = MaybeBinary(Atomic(), thisPrecedence);
-                        var binary = new BinaryExpression(left, operationType, right);
+                        var operationType = OperationTypeHelper.ConvertFromString(Current().Value);
+                        var currentPrecedence = OperationTypeHelper.GetPrecedence(operationType);
+                        if (currentPrecedence < precedence)
+                        {
+                            Read();
+                            var right = MaybeBinary(Atomic(), currentPrecedence);
+                            var binary = new BinaryExpression(left, operationType, right);
 
-                        return MaybeBinary(binary, precedence);
+                            left = binary;
+                            continue;
+                        }
                     }
+                    return left;
                 }
-                return left;
             }
 
             IExpression Expression() => MaybeBinary(NoneAtomic());

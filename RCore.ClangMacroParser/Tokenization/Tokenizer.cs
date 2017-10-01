@@ -9,6 +9,7 @@ namespace RCore.ClangMacroParser.Tokenization
     public static class Tokenizer
     {
         private static readonly HashSet<char> Digits = new HashSet<char>("0123456789");
+        private static readonly HashSet<char> HexDigits = new HashSet<char>("abcdef");
         private static readonly HashSet<char> Separators = new HashSet<char>(" \\\r\n\t");
         private static readonly HashSet<char> NumberEnd = new HashSet<char>("ulfd");
         private static readonly HashSet<char> Operators = new HashSet<char>("+-*/<>=|~!^&");
@@ -52,11 +53,12 @@ namespace RCore.ClangMacroParser.Tokenization
 
         public static IEnumerable<Token> Tokenize(string expression)
         {
-            bool IsAz(char x) => char.ToLower(x) >= 'a' && char.ToLower(x) <= 'z';
+            bool IsAz(char x) => char.ToLowerInvariant(x) >= 'a' && char.ToLowerInvariant(x) <= 'z';
             bool IsQuote(char x) => x == '\'';
             bool IsDoubleQuote(char x) => x == '"';
-            bool IsNumberStart(char x) => x == '.' || char.ToLower(x) == 'x' || Digits.Contains(x);
-            bool IsNumberEnd(char x) => NumberEnd.Contains(char.ToLower(x));
+            bool IsNumberStart(char x) => x == '.' ||  Digits.Contains(x);
+            bool IsNumberBody(char x) => IsNumberStart(x) || char.ToLowerInvariant(x) == 'x' || HexDigits.Contains(char.ToLowerInvariant(x));
+            bool IsNumberEnd(char x) => NumberEnd.Contains(char.ToLowerInvariant(x));
             bool IsIdentifierStart(char x) => x == '_' || IsAz(x);
             bool IsId(char x) => IsIdentifierStart(x) || Digits.Contains(x);
 
@@ -86,7 +88,7 @@ namespace RCore.ClangMacroParser.Tokenization
                 while (CanRead() && test(Current())) Read();
             }
 
-            Token Number() => Token(TokenType.Number, YieldWhile(IsNumberStart, IsNumberEnd));
+            Token Number() => Token(TokenType.Number, YieldWhile(IsNumberStart, IsNumberBody, IsNumberEnd));
 
             Token IdentifierOrKeyword()
             {

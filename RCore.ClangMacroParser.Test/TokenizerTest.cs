@@ -21,21 +21,19 @@ namespace RCore.ClangMacroParser.Test
         }
 
         [TestMethod]
-        public void NumberFloat()
+        public void Number()
         {
             AssertAreEqual(Token(TokenType.Number, ".23"), Tokenize(@".23").First());
-            AssertAreEqual(Token(TokenType.Number, ".23f"), Tokenize(@".23f").First());
             AssertAreEqual(Token(TokenType.Number, "1.23"), Tokenize(@"1.23").First());
-            AssertAreEqual(Token(TokenType.Number, "1.23f"), Tokenize(@"1.23f").First());
-        }
 
-        [TestMethod]
-        public void NumberInt()
-        {
+            AssertAreEqual(Token(TokenType.Number, ".23f"), Tokenize(@".23f").First());
+            AssertAreEqual(Token(TokenType.Number, "1.23f"), Tokenize(@"1.23f").First());
+
             AssertAreEqual(Token(TokenType.Number, "123"), Tokenize(@"123").First());
             AssertAreEqual(Token(TokenType.Number, "123ull"), Tokenize(@"123ull").First());
-            AssertAreEqual(Token(TokenType.Number, "0x123"), Tokenize(@"0x123").First());
-            AssertAreEqual(Token(TokenType.Number, "0x123ull"), Tokenize(@"0x123ull").First());
+
+            AssertAreEqual(Token(TokenType.Number, "0xABCDEF"), Tokenize(@"0xABCDEF").First());
+            AssertAreEqual(Token(TokenType.Number, "0xABCDEFull"), Tokenize(@"0xABCDEFull").First());
         }
 
         [TestMethod]
