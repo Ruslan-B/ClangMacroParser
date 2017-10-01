@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using RCore.ClangMacroParser.Expressions;
 
-namespace RCore.ClangMacroParser
+namespace RCore.ClangMacroParser.Expressions
 {
-    public static class OperationTypeHelper
+    public static class OperationTypeExtensions
     {
         // http://en.cppreference.com/w/c/language/operator_precedence
         private static readonly Dictionary<OperationType, int> OperationPrecedence = new Dictionary<OperationType, int>
@@ -30,8 +29,9 @@ namespace RCore.ClangMacroParser
             {OperationType.LessThanOrEqual, 6}
         };
 
+        public static int GetPrecedence(this OperationType operationType) => OperationPrecedence[operationType];
 
-        public static OperationType ConvertFromString(string value)
+        public static OperationType ToOperationType(this string value)
         {
             switch (value)
             {
@@ -58,10 +58,10 @@ namespace RCore.ClangMacroParser
                     throw new ArgumentOutOfRangeException(nameof(value));
             }
         }
-        
-        public static string ConvertToString(OperationType value)
+
+        public static string ToOperationTypeString(this OperationType operationType)
         {
-            switch (value)
+            switch (operationType)
             {
                 case OperationType.Add: return "+";
                 case OperationType.Divide: return "/";
@@ -84,10 +84,37 @@ namespace RCore.ClangMacroParser
                 case OperationType.LessThanOrEqual: return "<=";
 
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(value));
+                    throw new ArgumentOutOfRangeException(nameof(operationType));
             }
         }
 
-        public static int GetPrecedence(OperationType operationType) => OperationPrecedence[operationType];
+        public static bool IsArithmetic(this OperationType operationType)
+            => operationType == OperationType.Add ||
+               operationType == OperationType.Divide ||
+               operationType == OperationType.Modulo ||
+               operationType == OperationType.Multiply ||
+               operationType == OperationType.Power ||
+               operationType == OperationType.Subtract;
+
+        public static bool IsBitwise(this OperationType operationType)
+            => operationType == OperationType.And ||
+               operationType == OperationType.Or ||
+               operationType == OperationType.ExclusiveOr;
+
+        public static bool IsShift(this OperationType operationType)
+            => operationType == OperationType.LeftShift ||
+               operationType == OperationType.RightShift;
+
+        public static bool IsConditional(this OperationType operationType)
+            => operationType == OperationType.AndAlso ||
+               operationType == OperationType.OrElse;
+
+        public static bool IsComparison(this OperationType operationType)
+            => operationType == OperationType.Equal ||
+               operationType == OperationType.NotEqual ||
+               operationType == OperationType.GreaterThan ||
+               operationType == OperationType.GreaterThanOrEqual ||
+               operationType == OperationType.LessThan ||
+               operationType == OperationType.LessThanOrEqual;
     }
 }

@@ -73,7 +73,7 @@ namespace RCore.ClangMacroParser
             IExpression Unary()
             {
                 var t = Read();
-                var operationType = OperationTypeHelper.ConvertFromString(t.Value);
+                var operationType = t.Value.ToOperationType();
                 return new UnaryExpression(operationType, Expression());
             }
 
@@ -107,12 +107,12 @@ namespace RCore.ClangMacroParser
                 {
                     if (CanRead() && Current().IsOperator())
                     {
-                        var operationType = OperationTypeHelper.ConvertFromString(Current().Value);
-                        var currentPrecedence = OperationTypeHelper.GetPrecedence(operationType);
+                        var operationType = Current().Value.ToOperationType();
+                        var currentPrecedence = operationType.GetPrecedence();
                         if (currentPrecedence < precedence)
                         {
                             Read();
-                            var right = MaybeBinary(Atomic(), currentPrecedence);
+                            var right = MaybeBinary(NoneAtomic(), currentPrecedence);
                             var binary = new BinaryExpression(left, operationType, right);
 
                             left = binary;

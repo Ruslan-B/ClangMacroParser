@@ -52,7 +52,7 @@ namespace RCore.ClangMacroParser.Test
         }
 
         [TestMethod]
-        public void Cast()
+        public void CastThenBinary()
         {
             var e = Parser.Parse(@"((unsigned)(1 - 2))");
             CastExpression<CastExpression>(e, x =>
@@ -63,7 +63,23 @@ namespace RCore.ClangMacroParser.Test
         }
 
         [TestMethod]
-        public void Precedence()
+        public void BinaryThenCast()
+        {
+            var e = Parser.Parse(@"A | (ulong)(B)");
+            CastExpression<BinaryExpression>(e, x =>
+            {
+                Assert.AreEqual(OperationType.Or, x.OperationType);
+                CastExpression<VariableExpression>(x.Left, y => Assert.AreEqual("A", y.Name));
+                CastExpression<CastExpression>(x.Right, y =>
+                {
+                    Assert.AreEqual("ulong", y.TargetType);
+                    CastExpression<VariableExpression>(y.Operand, z => Assert.AreEqual("B", z.Name));
+                });
+            });
+        }
+
+        [TestMethod]
+        public void BinaryPrecedence()
         {
             var e = Parser.Parse("1 + 2 * 3");
             CastExpression<BinaryExpression>(e, x =>
