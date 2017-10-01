@@ -39,14 +39,16 @@ namespace RCore.ClangMacroParser
                         throw new NotSupportedException();
                 }
             }
-
+            
             IExpression Variable() => new VariableExpression(Read().Value);
 
             TResult InParentheses<TResult>(Func<TResult> func)
             {
-                Debug.Assert(Read().IsPunctuator("("));
+                Read();
+                Debug.Assert(Current().IsPunctuator("("));
                 var result = func();
-                Debug.Assert(Read().IsPunctuator(")"));
+                Read();
+                Debug.Assert(Current().IsPunctuator(")"));
                 return result;
             }
 
