@@ -36,7 +36,7 @@ namespace RCore.ClangMacroParser.Test
             CastExpression<ConstantExpression>(Parser.Parse("0.23"), x => Assert.AreEqual(0.23d, x.Value));
             CastExpression<ConstantExpression>(Parser.Parse("1.23d"), x => Assert.AreEqual(1.23d, x.Value));
             CastExpression<ConstantExpression>(Parser.Parse("1.23f"), x => Assert.AreEqual(1.23f, x.Value));
-            CastExpression<ConstantExpression>(Parser.Parse("0x0123456789ABCDEF"), x => Assert.AreEqual(0x0123456789ABCDEF, x.Value)); // unit
+            CastExpression<ConstantExpression>(Parser.Parse("0x0123456789ABCDEF"), x => Assert.AreEqual(0x0123456789ABCDEF, x.Value)); // long
             CastExpression<ConstantExpression>(Parser.Parse("0x80000000"), x => Assert.AreEqual(0x80000000, x.Value)); // unit
             CastExpression<ConstantExpression>(Parser.Parse("0x8000000000000000ULL"), x => Assert.AreEqual(0x8000000000000000UL, x.Value)); // unit
         }
